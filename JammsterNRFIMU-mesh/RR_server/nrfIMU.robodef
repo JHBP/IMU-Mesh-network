@@ -1,0 +1,10 @@
+service arduinoIMU
+
+option version 0.5
+
+object NrfImuInterface
+  
+    function double[] IMU1_read()
+    function double[] IMU2_read()
+
+end object
