@@ -2,7 +2,7 @@
  *Name of file:mesh_gateway.ino
  *Purpose: Research. Baxter robot IMU. Center for Automation Technologies and Systems (CATS) at-
  *         Rensselaer Polytechnic Institute
- *Credit: Andrew Cunningham, Jihoo Park
+ *Credit: Jihoo Park
  *Used: RF24Mesh by TMRh20
  *
  **/
@@ -15,7 +15,8 @@
 #include <EEPROM.h>
 
 #define DEBUG 0
-#define RATE 1
+#define DEBUG_S 0 //debug state mechine
+#define RATE 0
 //Bottom 3 int is to debug the speed of the sensor
 unsigned long time_check = 0;
 int hz = 0;
@@ -37,7 +38,7 @@ RF24Mesh mesh(radio,network);
 uint32_t displayTimer = 0;
 
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(9600);
 
   // Set the nodeID to 0 for the master node
   mesh.setNodeID(0);
@@ -63,13 +64,41 @@ void loop() {
     switch(header.type){
       // Display the incoming IMU data from the sensor nodes
     case 'L': 
-      network.read(header,&dat,sizeof(dat));
+      network.read(header,&dat,sizeof(dat));delay(2);
       byteAToIntA(dat,IMU1); 
+      if(DEBUG){
+        Serial.print("IMU Node1 Saved: ");
+        Serial.print(IMU1[0]);
+        Serial.print(" ");
+        Serial.print(IMU1[1]);
+        Serial.print(" ");
+        Serial.print(IMU1[2]);
+        Serial.print(" ");
+        Serial.print(IMU1[3]);
+        Serial.print(" ");
+        Serial.print(IMU1[4]);
+        Serial.print(" ");
+        Serial.println(IMU1[5]);
+        }
       count_data+=1; //only when RATE == 1
       break;
     case 'R': 
-      network.read(header,&dat,sizeof(dat));
-      byteAToIntA(dat,IMU2); 
+      network.read(header,&dat,sizeof(dat));delay(2);
+      byteAToIntA(dat,IMU2);
+      if(DEBUG){
+        Serial.print("IMU Node2 Saved: ");
+        Serial.print(IMU2[0]);
+        Serial.print(" ");
+        Serial.print(IMU2[1]);
+        Serial.print(" ");
+        Serial.print(IMU2[2]);
+        Serial.print(" ");
+        Serial.print(IMU2[3]);
+        Serial.print(" ");
+        Serial.print(IMU2[4]);
+        Serial.print(" ");
+        Serial.println(IMU2[5]);
+        } 
       count_data+=1; //only when RATE == 1
       break;
     default: 
@@ -81,46 +110,17 @@ void loop() {
 if(RATE){
    if (count_data==1000){
       float temp = 1000000000.0/(micros()-time_check);
+      Serial.println("*************************************");
       Serial.println(temp);
+      Serial.println("*************************************");
       count_data=0;
       time_check=micros();    
     }
     else{
       //Serial.println(count_data);
     }
-    if(mesh.addrListTop!=2){
-      Serial.println("not connected");
-    }
 }
-   
-  if(DEBUG){
-    Serial.println(" ");
-    Serial.println(F("********Assigned Addresses********"));
-    for(int i=0; i<mesh.addrListTop; i++){
-      Serial.print("IMU NodeID: ");
-      Serial.println(mesh.addrList[i].nodeID);
-      if((mesh.addrList[i].nodeID==1)){ 
-        Serial.print(IMU1[0]);
-        Serial.print(" ");
-        Serial.print(IMU1[1]);
-        Serial.print(" ");
-        Serial.print(IMU1[2]);
-        Serial.print(" ");
-        Serial.println(IMU1[3]);
-      }
-      else if((mesh.addrList[i].nodeID==2)){ 
-        Serial.print(IMU2[0]);
-        Serial.print(" ");
-        Serial.print(IMU2[1]);
-        Serial.print(" ");
-        Serial.print(IMU2[2]);
-        Serial.print(" ");
-        Serial.println(IMU2[3]);
-      }
 
-    }
-    Serial.println(F("**********************************"));
-  }
   
   //read serial commands 
   int val = 0;
@@ -130,12 +130,12 @@ if(RATE){
     /* whatever is available from the serial is read here    */
     val = Serial.read();
 
-    if(DEBUG){
+    if(DEBUG_S){
       Serial.print("val is : ");
       Serial.println(val);
     }
 
-    if(DEBUG){
+    if(DEBUG_S){
       Serial.print("s is : ");
       Serial.println(s);
     }
@@ -182,7 +182,7 @@ if(RATE){
 
       /*s=20 means send IMU data*/
     case 20:
-      if(DEBUG){
+      if(DEBUG_S){
         Serial.print("val is : ");
         Serial.println(val);
       }

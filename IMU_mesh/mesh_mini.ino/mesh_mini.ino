@@ -32,7 +32,7 @@ MPU9150 accelgyro;
 int ax, ay, az;
 int gx, gy, gz;
 
-int IMU1[7] = {0,0,0,0,0,0,0};
+int IMU[7] = {0,0,0,0,0,0,0};
 
 /**** Configure the nrf24l01 CE and CS pins ****/
 RF24 radio(8,7);
@@ -77,12 +77,12 @@ void setup() {
 void loop() {
   
   accelgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
-  IMU1[0] = ax; IMU1[1] = ay; IMU1[2] = az; IMU1[3] = gx; IMU1[4] = gy; IMU1[5] = gz; IMU1[6] = ax;
+  IMU[0] = ax; IMU[1] = ay; IMU[2] = az; IMU[3] = gx; IMU[4] = gy; IMU[5] = gz; IMU[6] = ax;
   
   mesh.update();
-
+if(nodeID ==1){
     // Send an 'L' type message containing the current IMU1()
-    if (!mesh.write((byte *)&IMU1, 'L', sizeof((byte *)&IMU1)*7)) {
+    if (!mesh.write((byte *)&IMU, 'L', sizeof((byte *)&IMU)*7)) {
 
       // If a write fails, check connectivity to the mesh network
       if ( ! mesh.checkConnection() ) {
@@ -94,8 +94,28 @@ void loop() {
       }
     } else {
       //Serial.println("Send OK: ");
+      //Serial.println(sizeof((byte *)&IMU1)*6);      
       //Serial.print(IMU1[0]);Serial.print(" ");Serial.print(IMU1[1]);Serial.print(" ");Serial.print(IMU1[2]);Serial.print(" ");Serial.println(IMU1[3]);   
     }
+}
+else if(nodeID ==2){
+    // Send an 'R' type message containing the current IMU1()
+    if (!mesh.write((byte *)&IMU, 'R', sizeof((byte *)&IMU)*7)) {
+
+      // If a write fails, check connectivity to the mesh network
+      if ( ! mesh.checkConnection() ) {
+        //refresh the network address
+        //Serial.println("Renewing Address");
+        mesh.renewAddress();
+      } else {
+        //Serial.println("Send fail, Test OK");
+      }
+    } else {
+      //Serial.println("Send OK: ");
+      //Serial.println(sizeof((byte *)&IMU1)*6);      
+      //Serial.print(IMU1[0]);Serial.print(" ");Serial.print(IMU1[1]);Serial.print(" ");Serial.print(IMU1[2]);Serial.print(" ");Serial.println(IMU1[3]);   
+    }
+}
 }
 
 
