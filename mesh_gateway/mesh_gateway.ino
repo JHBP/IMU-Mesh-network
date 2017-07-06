@@ -35,8 +35,6 @@ RF24 radio(8,7);
 RF24Network network(radio);
 RF24Mesh mesh(radio,network);
 
-uint32_t displayTimer = 0;
-
 void setup() {
   Serial.begin(9600);
 
@@ -80,7 +78,7 @@ void loop() {
         Serial.print(" ");
         Serial.println(IMU1[5]);
         }
-      count_data+=1; //only when RATE == 1
+      if(RATE) count_data+=1; //only when RATE == 1
       break;
     case 'R': 
       network.read(header,&dat,sizeof(dat));delay(2);
@@ -99,7 +97,7 @@ void loop() {
         Serial.print(" ");
         Serial.println(IMU2[5]);
         } 
-      count_data+=1; //only when RATE == 1
+      if(RATE) count_data+=1; //only when RATE == 1
       break;
     default: 
       network.read(header,0,0); //Serial.println(header.type);break;
@@ -120,7 +118,9 @@ if(RATE){
       //Serial.println(count_data);
     }
 }
-
+////////////////////////////////////////////////////////
+///////////////////STATE Machine////////////////////////
+////////////////////////////////////////////////////////
   
   //read serial commands 
   int val = 0;
@@ -210,6 +210,7 @@ if(RATE){
   }  
 
 }
+///////////////////////////////////////////////////////////////////
 // Fill an int array with the contents of a byte array
 // assume that the size of the int array is 7
 // and that the size of the byte array is 14
