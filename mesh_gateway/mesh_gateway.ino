@@ -36,7 +36,7 @@ RF24Network network(radio);
 RF24Mesh mesh(radio,network);
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
 
   // Set the nodeID to 0 for the master node
   mesh.setNodeID(0);
