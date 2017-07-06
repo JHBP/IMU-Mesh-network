@@ -13,31 +13,38 @@
 #include <SPI.h>
 //Include eeprom.h for AVR (Uno, Nano) etc. except ATTiny
 #include <EEPROM.h>
-
+//**********FOR DEBUG***********//
 #define DEBUG 0
 #define DEBUG_S 0 //debug state mechine
 #define RATE 0
+
 //Bottom 3 int is to debug the speed of the sensor
 unsigned long time_check = 0;
 int hz = 0;
 int count_data = 0;
+//////////////////////////////////
 
-
-int IMU1[7] = {0,0,0,0,0,0,0};
-int IMU2[7] = {0,0,0,0,0,0,0};
-
+//********Storing IMU data******//
+//0~6 is IMU1 and 7~13 is IMU2 
+int IMU[14]= {0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 //used to communicate with Robot Raconteur through serial
-byte byteBuffer[14];
-byte dat[14];//payload size 14
+byte byteBuffer[28];
+byte dat[28];//payload size 14
+//////////////////////////////////
 
+//***************For RF24***************//
 /***** Configure the chosen CE,CS pins *****/
 RF24 radio(8,7);
 RF24Network network(radio);
 RF24Mesh mesh(radio,network);
+////////////////////////////////////////
+
+//**Data send checker**//
+int val = 0;
+////////////////////////
 
 void setup() {
   Serial.begin(9600);
-
   // Set the nodeID to 0 for the master node
   mesh.setNodeID(0);
   //Serial.println("Gateway");
@@ -47,14 +54,13 @@ void setup() {
 }
 
 
-void loop() {    
 
+void loop() {    
   // Call mesh.update to keep the network updated
   mesh.update();
   // In addition, keep the 'DHCP service' running on the master node so addresses will
   // be assigned to the sensor nodes
   mesh.DHCP();
-
   // Check for incoming data from the sensors
   if(network.available()){
     RF24NetworkHeader header;
@@ -63,41 +69,33 @@ void loop() {
       // Display the incoming IMU data from the sensor nodes
     case 'L': 
       network.read(header,&dat,sizeof(dat));delay(2);
-      byteAToIntA(dat,IMU1); 
+      byteAToIntA1(dat,IMU); 
       if(DEBUG){
         Serial.print("IMU Node1 Saved: ");
-        Serial.print(IMU1[0]);
-        Serial.print(" ");
-        Serial.print(IMU1[1]);
-        Serial.print(" ");
-        Serial.print(IMU1[2]);
-        Serial.print(" ");
-        Serial.print(IMU1[3]);
-        Serial.print(" ");
-        Serial.print(IMU1[4]);
-        Serial.print(" ");
-        Serial.println(IMU1[5]);
+        Serial.print(IMU[0]);Serial.print(" ");
+        Serial.print(IMU[1]);Serial.print(" ");
+        Serial.print(IMU[2]);Serial.print(" ");
+        Serial.print(IMU[3]);Serial.print(" ");
+        Serial.print(IMU[4]);Serial.print(" ");
+        Serial.println(IMU[5]);
         }
-      if(RATE) count_data+=1; //only when RATE == 1
+        
+      if(RATE==1)count_data+=1; //only when RATE == 1
       break;
+      
     case 'R': 
       network.read(header,&dat,sizeof(dat));delay(2);
-      byteAToIntA(dat,IMU2);
+      byteAToIntA2(dat,IMU);
       if(DEBUG){
         Serial.print("IMU Node2 Saved: ");
-        Serial.print(IMU2[0]);
-        Serial.print(" ");
-        Serial.print(IMU2[1]);
-        Serial.print(" ");
-        Serial.print(IMU2[2]);
-        Serial.print(" ");
-        Serial.print(IMU2[3]);
-        Serial.print(" ");
-        Serial.print(IMU2[4]);
-        Serial.print(" ");
-        Serial.println(IMU2[5]);
+        Serial.print(IMU[7]);Serial.print(" ");
+        Serial.print(IMU[8]);Serial.print(" ");
+        Serial.print(IMU[9]);Serial.print(" ");
+        Serial.print(IMU[10]);Serial.print(" ");
+        Serial.print(IMU[11]);Serial.print(" ");
+        Serial.println(IMU[12]);
         } 
-      if(RATE) count_data+=1; //only when RATE == 1
+      if(RATE==1)count_data+=1; //only when RATE == 1
       break;
     default: 
       network.read(header,0,0); //Serial.println(header.type);break;
@@ -105,121 +103,49 @@ void loop() {
     
   }
 
-if(RATE){
-   if (count_data==1000){
-      float temp = 1000000000.0/(micros()-time_check);
-      Serial.println("*************************************");
-      Serial.println(temp);
-      Serial.println("*************************************");
-      count_data=0;
-      time_check=micros();    
-    }
-    else{
-      //Serial.println(count_data);
-    }
-}
-////////////////////////////////////////////////////////
-///////////////////STATE Machine////////////////////////
-////////////////////////////////////////////////////////
+  //check IMU update rate
+  if(RATE){
+     if (count_data==1000){
+        float temp = 1000000000.0/(micros()-time_check);
+        Serial.println("*************************************");
+        Serial.println(temp);
+        Serial.println("*************************************");
+        count_data=0;
+        time_check=micros();    
+      }
+  }
   
-  //read serial commands 
-  int val = 0;
-  int channel=0;
-  int static s = -1;
+  //transmitting data through Serial
   if (Serial.available() >0) {
-    /* whatever is available from the serial is read here    */
-    val = Serial.read();
-
-    if(DEBUG_S){
-      Serial.print("val is : ");
-      Serial.println(val);
-    }
-
-    if(DEBUG_S){
-      Serial.print("s is : ");
-      Serial.println(s);
-    }
-
-    /* This part basically implements a state machine that 
-     reads the serial port and makes just one transition 
-     to a new state, depending on both the previous state 
-     and the command that is read from the serial port. 
-     Some commands need additional inputs from the serial 
-     port, so they need 2 or 3 state transitions (each one
-     happening as soon as anything new is available from 
-     the serial port) to be fully executed. After a command 
-     is fully executed the state returns to its initial 
-     value s=-1                                            */
-
-    switch (s) {
-
-      /* s=-1 means NOTHING RECEIVED YET ******************* */
-    case -1:      
-
-      /* calculate next state                                */
-      if (val>47 && val<90) {
-        /* the first received value indicates the mode       
-         49 is ascii for 1, ... 90 is ascii for Z          
-         s=0 is change-pin mode;
-         s=10 is DI;  s=20 is DO;  s=30 is AI;  s=40 is AO; 
-         s=90 is query script type (1 basic, 2 motor);
-         s=340 is change analog reference;
-         s=400 example echo returning the input argument;
-         */
-        s=10*(val-48);
-      }
-
-      /* the following statements are needed to handle 
-       unexpected first values coming from the serial (if 
-       the value is unrecognized then it defaults to s=-1) */
-      if ((s>40 && s<90) || (s>90 && s!=340 && s!=400)) {
-        s=-1;
-      }
-
-      /* the break statements gets out of the switch-case, so
-      /* we go back and wait for new serial data             */
-      break; /* s=-1 (initial state) taken care of           */
-
-      /*s=20 means send IMU data*/
-    case 20:
+      val = Serial.read();
       if(DEBUG_S){
         Serial.print("val is : ");
         Serial.println(val);
       }
-      if (val == 33){
-        intToBytes(IMU1,7,byteBuffer);
-        Serial.write(byteBuffer,14);
-      } 
-      else if(val == 34){
-        intToBytes(IMU2,7,byteBuffer);
-        Serial.write(byteBuffer,14);
+      if (val == 20){
+        intToBytes(IMU,14,byteBuffer);
+        Serial.write(byteBuffer,28);
       }
-      s=-1;
-      break; /* s=0 taken care of                            */
-
-      /* ******* UNRECOGNIZED STATE, go back to s=-1 ******* */
-
-    default:
-      /* we should never get here but if we do it means we 
-       are in an unexpected state so whatever is the second 
-       received value we get out of here and back to s=-1  */
-
-      s=-1;  /* go back to the initial state, break unneeded */
-
-    } /* end switch on state s                               */
+    val = 0; 
   }  
 
 }
-///////////////////////////////////////////////////////////////////
+//end of loop
+
+
 // Fill an int array with the contents of a byte array
 // assume that the size of the int array is 7
 // and that the size of the byte array is 14
-void byteAToIntA(byte bArray[], int iArray[]){
+void byteAToIntA1(byte bArray[], int iArray[]){
   for(int i =0; i < 7; i++){
     iArray[i] = bArray[2*i] | bArray[(2*i)+1] << 8; 
   }
 }
-
+void byteAToIntA2(byte bArray[], int iArray[]){
+  for(int i =7; i < 14; i++){
+    iArray[i] = bArray[2*i] | bArray[(2*i)+1] << 8; 
+  }
+}
 // convert an array of ints to an array of bytes
 // specify size (number of ints) in input as sizeOfIntArray
 void intToBytes(int input[], int sizeOfIntArray, byte buf[]){
